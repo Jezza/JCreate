@@ -1,0 +1,31 @@
+apply plugin: 'java'
+
+project.version = "0.1"
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+    compile 'com.google.guava:guava:19.0-rc2'
+}
+
+jar {
+	version = project.version
+	classifier = "dev"
+	from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+	manifest {
+        attributes 'Main-Class': 'me.jezza.jc.JCreate'
+    }
+}
+
+// Source jar
+task srcJar(type: Jar) {
+	from sourceSets.main.allSource
+	version = project.version
+	classifier = "src"
+}
+
+artifacts {
+	archives srcJar
+}

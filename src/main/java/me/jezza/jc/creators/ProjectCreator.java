@@ -5,8 +5,13 @@ import me.jezza.jc.Creators;
 import me.jezza.jc.JCreate;
 import me.jezza.jc.annotations.CreatorError;
 import me.jezza.jc.annotations.CreatorParam;
+import me.jezza.jc.lib.Files;
+import me.jezza.jc.lib.Rename;
+import me.jezza.jc.lib.Utils;
 
+import java.io.File;
 import java.util.Arrays;
+import java.util.zip.ZipEntry;
 
 import static me.jezza.jc.lib.Utils.useable;
 
@@ -15,6 +20,14 @@ import static me.jezza.jc.lib.Utils.useable;
  */
 @CreatorParam("project")
 public class ProjectCreator {
+
+	public static final String TEMPLATE_ZIP = "Template.zip";
+	public static final String TEMPLATE_IML = "Template.iml";
+	public static final String TEMPLATE_NAME_FILE = ".idea/.name";
+	public static final String TEMPLATE_WORKSPACE = ".idea/workspace.xml";
+	public static final String TEMPLATE_MODULES = ".idea/modules.xml";
+
+	public static final String[] OVERWRITE_FLAGS = {"-o", "-overwrite"};
 
 	@CreatorError
 	public void error(String[] params) {
@@ -31,8 +44,33 @@ public class ProjectCreator {
 		if (!useable(projectName))
 			throw JCreate.error("Invalid project name.");
 		System.out.println("Creating Java Project ['" + projectName + "']");
+		File project = new File(JCreate.CWD(), projectName);
+		if (project.exists()) {
+			if (!Utils.checkArrayFor(params, OVERWRITE_FLAGS)) {
+				System.out.println("Project exists, if you wish to overwrite it use the flags: " + Arrays.asList(OVERWRITE_FLAGS));
+				System.out.println("Exiting...");
+				return;
+			}
+			System.out.println("Attempting to delete project: " + projectName);
+			if (!Files.delete(project))
+				throw JCreate.error("Failed to delete previous project. Aborting...");
+			System.out.println("Resuming...");
+		}
+		Files.openZip(TEMPLATE_ZIP, project, ((name, entry, file) -> processFile(projectName, name, entry, file)));
+	}
 
-
+	private String processFile(String projectName, String name, ZipEntry entry, File file) {
+		switch (name) {
+			case TEMPLATE_IML:
+				Rename.in(file, Rename.PROJECT_NAME, projectName);
+				return projectName + ".iml";
+			case TEMPLATE_NAME_FILE:
+			case TEMPLATE_WORKSPACE:
+			case TEMPLATE_MODULES:
+				Rename.in(file, Rename.PROJECT_NAME, projectName);
+			default:
+				return null;
+		}
 	}
 
 	@CreatorParam("help")

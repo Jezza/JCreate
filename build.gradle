@@ -8,6 +8,7 @@ repositories {
 
 dependencies {
     compile 'com.google.guava:guava:19.0-rc2'
+	compile 'com.google.code.gson:gson:2.4'
 }
 
 jar {

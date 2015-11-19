@@ -4,12 +4,14 @@ import com.google.common.base.Splitter;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * @author Jezza
  */
-public class Utils {
-
+public enum Utils {
+	;
+	
 	public static final Splitter PARAM_SPLITTER = Splitter.on(" ").trimResults().omitEmptyStrings();
 
 	public static boolean useable(CharSequence charSequence) {
@@ -27,12 +29,18 @@ public class Utils {
 	}
 
 	public static boolean startsWith(String[] target, String[] with) {
-		System.out.println(Arrays.asList(with));
 		if (with.length > target.length)
 			return false;
 		for (int i = 0; i < with.length; i++)
 			if (!with[i].equals(target[i]))
 				return false;
 		return true;
+	}
+
+	public static boolean checkArrayFor(String[] params, String... values) {
+		if (params == null || values == null || params.length == 0 || values.length == 0)
+			return false;
+		List<String> against = Arrays.asList(values);
+		return Stream.of(params).anyMatch(against::contains);
 	}
 }

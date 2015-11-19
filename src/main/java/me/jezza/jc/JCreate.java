@@ -25,7 +25,11 @@ public class JCreate {
 			throw error("Unknown parameters: " + Arrays.asList(params));
 		params = Arrays.copyOfRange(params, creator.length(), params.length);
 		print("Creator ({}) launched with {} in {}", creator, Arrays.asList(params), CWD);
-		creator.create(params);
+		try {
+			creator.create(params);
+		} catch (Exception e) {
+			throw JCreate.error("Caught exception from " + creator.getClass(), e);
+		}
 	}
 
 	public static File CWD() {

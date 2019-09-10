@@ -1,32 +1,77 @@
-apply plugin: 'java'
+import java.nio.file.Paths
+import java.util.stream.Collectors
 
-project.version = "0.1"
+apply plugin: 'java'
+apply plugin: 'idea'
+
+version = "0.1"
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "net.ltgt.gradle:gradle-apt-plugin:0.5"
+    }
+}
+
+apply plugin: 'net.ltgt.apt'
+
 dependencies {
-    compile 'com.google.guava:guava:19.0-rc2'
-	compile 'com.google.code.gson:gson:2.4'
+    if (new File("build\\libs\\JCreate-0.1.jar").exists()) {
+        apt files("build/libs/JCreate-0.1.jar")
+    } else {
+        apt files("processor.jar")
+    }
+}
+
+sourceSets.all {
+    def path = "$buildDir\\resources\\" + it.name
+    def s = it
+    task "gen$name"(type: Task) {
+        println "Gen:" + s.name
+        doLast {
+            def p = projectDir.toPath().resolve(Paths.get("src", s.name, "java"))
+            println "Last: " + s
+            def files = s.allSource.filter {
+                return it.toString().contains("\\creators\\") && it.isFile()
+            }.collect {
+                p.relativize(it.toPath()).toString().replace(File.separator, ".").replaceFirst(".java", "")
+            }
+            println files
+            if (!files.isEmpty()) {
+                def directory = new File(path, "data")
+                directory.exists() || directory.mkdirs()
+                def target = new File(directory, "classes.data")
+                target.exists() && target.delete()
+                target.createNewFile()
+                target.text = files.stream().collect(Collectors.joining(System.lineSeparator()))
+            }
+        }
+    }
+    output.dir(path, builtBy: "gen$name")
 }
 
 jar {
-	version = project.version
-	classifier = "dev"
-	from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
-	manifest {
+    version = project.version
+    manifest {
         attributes 'Main-Class': 'me.jezza.jc.JCreate'
     }
 }
 
 // Source jar
 task srcJar(type: Jar) {
-	from sourceSets.main.allSource
-	version = project.version
-	classifier = "src"
+    from sourceSets.main.allSource
+    version = project.version
+    classifier = "src"
 }
 
 artifacts {
-	archives srcJar
+    archives srcJar
 }

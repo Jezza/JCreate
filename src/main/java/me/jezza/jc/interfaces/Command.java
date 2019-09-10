@@ -1,4 +1,4 @@
-package me.jezza.jc.annotations;
+package me.jezza.jc.interfaces;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -10,5 +10,12 @@ import java.lang.annotation.Target;
  */
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface CreatorIgnore {
+public @interface Command {
+	String DEFAULT_JOINER = " ";
+
+	String value();
+
+	String joiner() default DEFAULT_JOINER;
+
+	boolean caseInsensitive() default true;
 }

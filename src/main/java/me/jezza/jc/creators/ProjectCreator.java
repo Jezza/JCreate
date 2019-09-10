@@ -1,92 +1,105 @@
 package me.jezza.jc.creators;
 
-import me.jezza.jc.CreatorClass;
-import me.jezza.jc.CreatorClass.Creator;
-import me.jezza.jc.Creators;
+import static me.jezza.jc.util.Strings.useable;
+
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
 import me.jezza.jc.JCreate;
-import me.jezza.jc.annotations.CreatorArgument;
-import me.jezza.jc.annotations.CreatorClassInstance;
-import me.jezza.jc.annotations.CreatorError;
-import me.jezza.jc.annotations.CreatorParam;
-import me.jezza.jc.lib.Files;
-import me.jezza.jc.lib.Rename;
-
-import java.io.File;
-import java.util.Arrays;
-import java.util.zip.ZipEntry;
-
-import static me.jezza.jc.lib.Utils.useable;
+import me.jezza.jc.interfaces.Command;
+import me.jezza.jc.interfaces.Parameter;
+import me.jezza.jc.template.Template;
 
 /**
  * @author Jezza
  */
-@CreatorParam("project")
+@Command("project")
 public class ProjectCreator {
-	public static final String TEMPLATE_ZIP = "Template.zip";
-	public static final String TEMPLATE_IML = "Template.iml";
-	public static final String TEMPLATE_NAME_FILE = ".idea/.name";
-	public static final String TEMPLATE_WORKSPACE = ".idea/workspace.xml";
-	public static final String TEMPLATE_MODULES = ".idea/modules.xml";
+	private static final String TEMPLATE_DIR = "C:\\Users\\Jezza\\Desktop\\JavaProjects\\Template";
+	private static final String TEMPLATE_ZIP = "C:\\Users\\Jezza\\Desktop\\JavaProjects\\Template.zip";
 
-	@CreatorClassInstance
-	private CreatorClass creatorClass;
-
-	@CreatorArgument({"-o", "-overwrite"})
+	@Parameter(names = {"-o", "--overwrite"})
 	private boolean overwrite = false;
 
-	@CreatorArgument({"-g", "-github"})
-	private boolean github = false;
+	@Parameter(names = {"-t", "--template"})
+	private String template = TEMPLATE_DIR;
 
-	@CreatorError
-	public void error(String[] params) {
-		if (params.length == 0)
-			throw JCreate.error("No creator specified. Available options: [TODO]");
-		throw JCreate.error("Failed to locate creator with '" + params[0] + '\'');
-	}
-
-	@CreatorParam("java")
-	public void create(String[] params) {
-		if (params.length == 0)
-			throw JCreate.error("Requires a project name.");
-		String projectName = params[0];
-		if (!useable(projectName))
+	@Command("java")
+	public void create(String[] params) throws IOException {
+		if (params.length < 2)
+			throw JCreate.error("Requires a project name and a group id.");
+		String name = params[0];
+		if (!useable(name))
 			throw JCreate.error("Invalid project name.");
-		System.out.println("Creating Java Project ['" + projectName + "']");
-		File project = new File(JCreate.CWD(), projectName);
-		if (project.exists()) {
-			if (!overwrite) {
-				System.out.println("Project already exists with that name, if you wish to overwrite it use the flags: [-o or -overwrite]");
-				System.out.println("Exiting...");
-				return;
-			}
-			System.out.println("Attempting to delete project: " + projectName);
-			if (!Files.delete(project))
-				throw JCreate.error("Failed to delete previous project. Aborting...");
-			System.out.println("Resuming...");
+		String groupId = params[1];
+		if (!useable(groupId))
+			throw JCreate.error("Invalid groupId.");
+		Path project = JCreate.cwd().resolve(name);
+		if (Files.exists(project)) {
+//			if (!overwrite) {
+//				System.out.println("Project already exists with that name, if you wish to overwrite it use the flags: [-o or -overwrite]");
+//				System.out.println("Exiting...");
+//				return;
+//			}
+//			System.out.println("Attempting to delete project: " + projectName);
+//			if (!Files.delete(project.toPath()))
+//				throw JCreate.error("Failed to delete previous project. Aborting...");
+//			System.out.println("Resuming...");
+			Files.walkFileTree(project, new SimpleFileVisitor<Path>() {
+				@Override
+				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+					Files.delete(file);
+					return FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+					Files.delete(dir);
+					return FileVisitResult.CONTINUE;
+				}
+			});
 		}
-		if (github) {
-			System.out.println("Currently not a thing.");
+		System.out.println("Creating Java Project ['" + name + "']");
+
+		final Template template = Template.open(this.template);
+
+		Map<String, String> properties = new HashMap<>();
+		properties.put("name", name);
+		properties.put("groupId", groupId);
+
+		try {
+			template.into(project, new TemplateProperties(properties));
+		} catch (IOException e) {
+			throw new IllegalStateException("Caught exception while transforming template: ", e);
 		}
-		Files.openZip(TEMPLATE_ZIP, project, ((name, entry, file) -> processFile(projectName, name, entry, file)));
 	}
 
-	private String processFile(String projectName, String name, ZipEntry entry, File file) {
-		switch (name) {
-			case TEMPLATE_IML:
-				Rename.in(file, Rename.PROJECT_NAME, projectName);
-				return projectName + ".iml";
-			case TEMPLATE_NAME_FILE:
-			case TEMPLATE_WORKSPACE:
-			case TEMPLATE_MODULES:
-				Rename.in(file, Rename.PROJECT_NAME, projectName);
-			default:
-				return null;
+	private static final class TemplateProperties implements Function<String, String> {
+		private final Map<String, String> properties;
+
+		TemplateProperties(Map<String, String> properties) {
+			this.properties = properties;
+		}
+
+		@Override
+		public String apply(String token) {
+			String value = properties.get(token);
+			if (value == null)
+				throw new IllegalStateException("No input value: " + token);
+			return value;
 		}
 	}
 
-	@CreatorParam("help")
-	public void help(String[] params) {
-		for (Creator creator : Creators.creatorClass(getClass()).creators())
-			System.out.println("Possible values: " + Arrays.asList(creator.params()));
-	}
+//	@Command("help")
+//	public void help(String[] params) {
+//		for (CreatorClass.Creator creator : Creators.creatorClass(getClass()).creators())
+//			System.out.println("Possible values: " + Arrays.asList(creator.params()));
+//	}
 }

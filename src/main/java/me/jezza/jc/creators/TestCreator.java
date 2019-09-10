@@ -1,12 +1,23 @@
 package me.jezza.jc.creators;
 
-import me.jezza.jc.annotations.CreatorParam;
+import java.io.IOException;
+
+import me.jezza.jc.interfaces.Command;
 
 /**
  * @author Jezza
  */
 public class TestCreator {
-	@CreatorParam("test scala")
-	public void create() {
+
+	@Command("test-creator")
+	public void create(String[] args) {
+	}
+
+	@Command("internal thingy")
+	public void lol() {
+		class Test {
+			public void create() throws IOException {
+			}
+		}
 	}
 }
